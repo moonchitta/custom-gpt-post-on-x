@@ -1,52 +1,84 @@
-openapi: 3.0.1
+openapi: 3.1.0
 info:
-  title: CustomGPT Twitter Posting App
-  description: A Flask application for authenticating users with Twitter and posting tweets.
+  title: Twitter API OAuth 2.0 Application
+  description: A Flask-based API to authenticate users via Twitter OAuth 2.0 and post tweets with optional media.
   version: 1.0.0
 servers:
-  - url: http://localhost:5000
+  - url: https://d7ed-192-34-101-22.ngrok-free.app
+    description: Local development server
 paths:
-  /startAuth:
-    get:
-      summary: Start OAuth Authentication
-      description: Redirects the user to Twitter's OAuth 2.0 authorization page.
-      responses:
-        '302':
-          description: Redirects to the Twitter authorization URL.
-
   /:
     get:
-      summary: Home
-      description: Displays the welcome message.
+      operationId: home
+      summary: Welcome message
+      description: Returns a welcome message for the API.
       responses:
         '200':
-          description: Successful response.
+          description: A successful response
           content:
             text/plain:
               schema:
                 type: string
-                example: Welcome to the CustomGPT Twitter Posting App!
+                example: Welcome to the Twitter API OAuth 2.0 App!
+
+  /startAuth:
+    get:
+      operationId: startAuth
+      summary: Start the OAuth 2.0 flow
+      description: Returns the authorization URL for the user to authenticate via Twitter.
+      responses:
+        '200':
+          description: Authorization URL generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Authorization URL generated successfully.
+                  authorization_url:
+                    type: string
+                    format: uri
+                    example: https://twitter.com/i/oauth2/authorize?response_type=code&client_id=YOUR_CLIENT_ID...
+                  state:
+                    type: string
+                    example: state_value
+        '500':
+          description: Failed to generate the authorization URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to generate authorization URL.
+                  details:
+                    type: string
+                    example: Error message
 
   /callback:
     get:
-      summary: OAuth Callback
-      description: Handles the callback from Twitter after user authentication.
+      operationId: callback
+      summary: Handle callback and generate access token
+      description: Handles the callback from Twitter and generates an access token for the authenticated user.
       parameters:
         - name: code
           in: query
           required: true
-          description: Authorization code returned by Twitter.
+          description: Authorization code from Twitter
           schema:
             type: string
         - name: state
           in: query
-          required: false
-          description: State parameter used to prevent CSRF attacks.
+          required: true
+          description: State parameter for CSRF protection
           schema:
             type: string
       responses:
         '200':
-          description: Successful token exchange.
+          description: Access token generated successfully
           content:
             application/json:
               schema:
@@ -57,17 +89,43 @@ paths:
                     example: Authentication successful!
                   access_token:
                     type: string
-                    description: Access token for the authenticated user.
+                  expires_at:
+                    type: string
+                    format: date-time
+                  scope:
+                    type: string
+                    example: tweet.write users.read tweet.read
         '400':
-          description: Authorization code not provided or invalid.
+          description: Invalid or missing parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Authorization code not found in the callback URL.
         '500':
-          description: Internal server error during token exchange.
+          description: Failed to generate access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to generate access token.
+                  details:
+                    type: string
+                    example: Error message
 
   /postTweet:
     post:
-      summary: Post a Tweet
-      description: Allows an authenticated user to post a tweet with optional media.
+      operationId: postTweet
+      summary: Post a tweet
+      description: Posts a tweet on behalf of the authenticated user, with optional media.
       requestBody:
+        description: The content of the tweet and an optional media URL.
         required: true
         content:
           application/json:
@@ -76,13 +134,16 @@ paths:
               properties:
                 text:
                   type: string
-                  description: Text content of the tweet.
+                  description: The content of the tweet
+                  example: Hello, this is a test tweet!
                 media_url:
                   type: string
-                  description: URL of the media to be attached to the tweet.
+                  format: uri
+                  description: URL of the media to attach to the tweet
+                  example: https://example.com/path/to/image.jpg
       responses:
         '201':
-          description: Tweet posted successfully.
+          description: Tweet posted successfully
           content:
             application/json:
               schema:
@@ -91,12 +152,41 @@ paths:
                   message:
                     type: string
                     example: Tweet posted successfully!
-                  tweet_data:
-                    type: object
-                    description: Details of the posted tweet.
+                  tweet_id:
+                    type: string
+                  tweet_text:
+                    type: string
+                  tweet_url:
+                    type: string
+                    format: uri
+                    example: https://twitter.com/user/status/1234567890
         '400':
-          description: Invalid request (e.g., no tweet text or media URL provided).
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Either tweet text or media_url is required
         '401':
-          description: User not authenticated.
+          description: Access token expired or missing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Access token expired or missing. Reauthenticate.
         '500':
-          description: Internal server error during tweet posting.
+          description: Failed to post tweet
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to post tweet: Error message

@@ -7,13 +7,32 @@ from pytwitter import Api
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
-
+from flask_session import Session
+from flask_cors import CORS
 # Load environment variables from .env file
 load_dotenv()
 
 # Flask app setup
 app = Flask(__name__)
+
+# Flask session configuration
 app.secret_key = os.getenv("FLASK_SECRET_KEY")  # Replace with a secure key
+app.config["SESSION_TYPE"] = "filesystem"  # Use filesystem-based session storage
+app.config["SESSION_FILE_DIR"] = "./.flask_session/"  # Directory for session files
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_USE_SIGNER"] = True  # Sign the session cookie
+app.config["SESSION_COOKIE_HTTPONLY"] = True  # Protect against XSS
+app.config["SESSION_COOKIE_SECURE"] = True  # Required for HTTPS (useful for ngrok)
+app.config["SESSION_COOKIE_SAMESITE"] = "None"  # Allow cross-site requests
+
+# Ensure the session directory exists
+os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
+
+# Initialize Flask-Session
+Session(app)
+
+# Enable CORS for all routes
+CORS(app, supports_credentials=True)
 
 # Twitter API credentials from environment variables
 CLIENT_ID = os.getenv("CLIENT_ID")
@@ -21,6 +40,7 @@ CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")  # Replace with your actual callback URL
 ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET")  # Replace with your actual callback URL
 CALLBACK_URL = os.getenv("REDIRECT_URI")  # Replace with your actual callback URL
+
 TOKENS_DIR = "tokens"
 
 # Ensure the directory exists
@@ -41,13 +61,11 @@ def home():
 
 @app.route('/startAuth', methods=['GET'])
 def start_auth():
-    """Step 1: Redirect user to Twitter for authorization."""
     url, code_verifier, state = api.get_oauth2_authorize_url()
-    print(f"URL: {url}")
     session['code_verifier'] = code_verifier
     session['state'] = state
-    return redirect(url)
-
+    print(f"Set-Cookie: {session.get('state')}")
+    return jsonify({"authorization_url": url, "state": state}), 200
 
 @app.route('/callback', methods=['GET'])
 def callback():
