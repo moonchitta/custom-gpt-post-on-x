@@ -1,0 +1,102 @@
+openapi: 3.0.1
+info:
+  title: CustomGPT Twitter Posting App
+  description: A Flask application for authenticating users with Twitter and posting tweets.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+paths:
+  /startAuth:
+    get:
+      summary: Start OAuth Authentication
+      description: Redirects the user to Twitter's OAuth 2.0 authorization page.
+      responses:
+        '302':
+          description: Redirects to the Twitter authorization URL.
+
+  /:
+    get:
+      summary: Home
+      description: Displays the welcome message.
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Welcome to the CustomGPT Twitter Posting App!
+
+  /callback:
+    get:
+      summary: OAuth Callback
+      description: Handles the callback from Twitter after user authentication.
+      parameters:
+        - name: code
+          in: query
+          required: true
+          description: Authorization code returned by Twitter.
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          description: State parameter used to prevent CSRF attacks.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful token exchange.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Authentication successful!
+                  access_token:
+                    type: string
+                    description: Access token for the authenticated user.
+        '400':
+          description: Authorization code not provided or invalid.
+        '500':
+          description: Internal server error during token exchange.
+
+  /postTweet:
+    post:
+      summary: Post a Tweet
+      description: Allows an authenticated user to post a tweet with optional media.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                  description: Text content of the tweet.
+                media_url:
+                  type: string
+                  description: URL of the media to be attached to the tweet.
+      responses:
+        '201':
+          description: Tweet posted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Tweet posted successfully!
+                  tweet_data:
+                    type: object
+                    description: Details of the posted tweet.
+        '400':
+          description: Invalid request (e.g., no tweet text or media URL provided).
+        '401':
+          description: User not authenticated.
+        '500':
+          description: Internal server error during tweet posting.
